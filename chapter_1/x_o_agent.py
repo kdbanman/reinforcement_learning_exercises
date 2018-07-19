@@ -142,6 +142,9 @@ class Agent:
     self._board_states_observed.append(relative_board_state)
 
   def apply_reward(self, reward):
+    if len(self._board_states_observed) == 0:
+      return
+
     final_game_state = self._board_states_observed.pop()
     self._value_table[final_game_state] = reward
 
@@ -342,6 +345,7 @@ def plot_training_regime(
     agent_a_step_size=0.01,
     agent_b_step_size=0.01,
     randomized_first_player=False,
+    agent_self_play=False,
     win_reward=1.0,
     loss_reward=-1.0,
     draw_reward=0.0,
@@ -349,6 +353,8 @@ def plot_training_regime(
 
   agent_a = Agent(agent_a_epsilon, agent_a_step_size)
   agent_b = Agent(agent_b_epsilon, agent_b_step_size)
+  if agent_self_play:
+    agent_b = agent_a
 
   games_played = []
   x_victories = []
@@ -381,9 +387,12 @@ def plot_training_regime(
   total_games_played = games_per_training_cycle * training_cycles
   plot_title_template = \
     "%(total_games_played)s Games Played - " + \
-    "Agent A (ε = %(agent_a_epsilon)s, α = %(agent_a_step_size)s) vs. " + \
-    "Agent B (ε = %(agent_b_epsilon)s, α = %(agent_b_step_size)s)\n " + \
-    "X always goes first.  "
+    "Agent A (ε = %(agent_a_epsilon)s, α = %(agent_a_step_size)s) vs. "
+  if agent_self_play:
+    plot_title_template += "Itself\n"
+  else:
+    plot_title_template += "Agent B (ε = %(agent_b_epsilon)s, α = %(agent_b_step_size)s)\n "
+  plot_title_template += "X always goes first.  "
   if randomized_first_player:
     plot_title_template += "X is played by either agent.\n"
   else:
@@ -407,13 +416,14 @@ def plot_training_regime(
   ax2.yaxis.set_major_locator(ticker.MultipleLocator(base=2))
   ax2.set_yticklabels([""] + ["%0.1f" % (value * 0.01) for value in range(0, 110, 10)])
 
-  o_value_heatmap = transpose(o_value_histograms)
-  ax3.imshow(o_value_heatmap, aspect="auto", cmap="Reds")
-  ax3.set(xlabel=x_axis_label, ylabel="Agent B - Value Distribution")
-  ax3.yaxis.set_major_locator(ticker.MultipleLocator(base=2))
-  ax3.set_yticklabels([""] + ["%0.1f" % (value * 0.01) for value in range(0, 110, 10)])
+  if not agent_self_play:
+    o_value_heatmap = transpose(o_value_histograms)
+    ax3.imshow(o_value_heatmap, aspect="auto", cmap="Reds")
+    ax3.set(xlabel=x_axis_label, ylabel="Agent B - Value Distribution")
+    ax3.yaxis.set_major_locator(ticker.MultipleLocator(base=2))
+    ax3.set_yticklabels([""] + ["%0.1f" % (value * 0.01) for value in range(0, 110, 10)])
 
-  foldername = "A(ε=%(agent_a_epsilon)s, α=%(agent_a_step_size)s) vs B(ε=%(agent_b_epsilon)s, α=%(agent_b_step_size)s) - N=%(total_games_played)s R=%(randomized_first_player)s" % locals()
+  foldername = "A(ε=%(agent_a_epsilon)s, α=%(agent_a_step_size)s) vs B(ε=%(agent_b_epsilon)s, α=%(agent_b_step_size)s) - N=%(total_games_played)s R=%(randomized_first_player)s S=%(agent_self_play)s" % locals()
   os.makedirs(foldername, exist_ok=True)
   filename = "W=%(win_reward)s, L=%(loss_reward)s, D=%(draw_reward)s.png" % locals()
   fig.savefig(os.path.join(foldername, filename))
@@ -429,6 +439,7 @@ if __name__ == "__main__":
     "agent_a_step_size = %(agent_a_step_size)s\n" + \
     "agent_b_step_size = %(agent_b_step_size)s\n" + \
     "randomized_first_player = %(randomized_first_player)s\n" + \
+    "agent_self_play = %(agent_self_play)s\n" + \
     "win_reward = %(win_reward)s\n" + \
     "loss_reward = %(loss_reward)s\n" + \
     "draw_reward = %(draw_reward)s\n"
@@ -444,20 +455,22 @@ if __name__ == "__main__":
   for win_reward in [1.0, 0.0, -1.0]:
     for loss_reward in [-1.0, 0.0, 1.0]:
       for draw_reward in [0.0, -1.0, 1.0]:
+        for agent_self_play in [False, True]:
 
-        print("Training with hyperparameter set:")
-        print(hyperparameter_template_string % locals())
-        plot_training_regime(
-          games_per_training_cycle=games_per_training_cycle,
-          training_cycles=training_cycles,
-          agent_a_epsilon=agent_a_epsilon,
-          agent_b_epsilon=agent_b_epsilon,
-          agent_a_step_size=agent_a_step_size,
-          agent_b_step_size=agent_b_step_size,
-          randomized_first_player=randomized_first_player,
-          win_reward=win_reward,
-          loss_reward=loss_reward,
-          draw_reward=draw_reward,
-        )
-        print("Done.\n")
+          print("Training with hyperparameter set:")
+          print(hyperparameter_template_string % locals())
+          plot_training_regime(
+            games_per_training_cycle=games_per_training_cycle,
+            training_cycles=training_cycles,
+            agent_a_epsilon=agent_a_epsilon,
+            agent_b_epsilon=agent_b_epsilon,
+            agent_a_step_size=agent_a_step_size,
+            agent_b_step_size=agent_b_step_size,
+            randomized_first_player=randomized_first_player,
+            agent_self_play=agent_self_play,
+            win_reward=win_reward,
+            loss_reward=loss_reward,
+            draw_reward=draw_reward,
+          )
+          print("Done.\n")
 
