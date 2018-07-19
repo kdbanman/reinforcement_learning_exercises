@@ -445,7 +445,7 @@ if __name__ == "__main__":
     "draw_reward = %(draw_reward)s\n"
 
   training_cycles = 200
-  games_per_training_cycle = 10000
+  games_per_training_cycle = 1000
   agent_a_epsilon = 0.01
   agent_b_epsilon = 0.01
   agent_a_step_size = 0.1
